@@ -1,5 +1,6 @@
-# Repo for toying around with GLFW, OpenGL, and eventually Vulkan.
+# go-glfwe
+Repo for toying around with GLFW, OpenGL, and eventually Vulkan.
 
-# Compiling against Wayland:
+## Compiling against wayland:
 ` go build -targs=wayland`
 
