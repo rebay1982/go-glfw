@@ -11,6 +11,11 @@ import (
 	"image/color"
 )
 
+const (
+	WINDOW_TITLE = "GLFW Template"
+	WINDOW_WIDTH = 1980 
+	WINDOW_HEIGHT = 1080
+)
 
 func init() {
 	// This is needed to arrange that main() runs on main thread.
@@ -18,10 +23,7 @@ func init() {
 	runtime.LockOSThread()
 }
 
-func printTime(time float64) {
-	log.Printf("Time elapsed %f\n", time)
-}
-
+// initGlfw: Initialize GLFW and return a window.
 func initGlfw() *glfw.Window {
 	err := glfw.Init()
 	if err != nil {
@@ -30,18 +32,18 @@ func initGlfw() *glfw.Window {
 
 	glfw.WindowHint(glfw.Resizable, glfw.False)
 
-	window, err := glfw.CreateWindow(640, 480, "Hellow world.", nil, nil)
+	window, err := glfw.CreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, nil, nil)
 	if err != nil {
 		panic(err)
 	}
 	window.MakeContextCurrent()
 
-	// Set VSYCH on.
-	glfw.SwapInterval(1)
+	glfw.SwapInterval(1)	// Enable vsync
 	
 	return window
 }
 
+// initOpengl: Function to initialize the OpenGL component.
 func initOpengl() {
 	err := gl.Init()
 	if err != nil {
@@ -53,61 +55,76 @@ func initOpengl() {
 
 }
 
-
-
-func main() {
-	// Init GLFW: Start /////////////////////////////////////////////////////////////////////////////////////////////////
-	window := initGlfw()
-	defer glfw.Terminate() // Terminate when we're done.
-	// Init GLFW: Done //////////////////////////////////////////////////////////////////////////////////////////////////
-
-	// Init OpenGL: Start ///////////////////////////////////////////////////////////////////////////////////////////////
-	initOpengl()
-	// Init OpenGL: Done ////////////////////////////////////////////////////////////////////////////////////////////////
-
+func initTexture() uint32 {
 	var texture uint32
-	{
-		gl.GenTextures(1, &texture)
+	gl.GenTextures(1, &texture)
+	gl.BindTexture(gl.TEXTURE_2D, texture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 
-		gl.BindTexture(gl.TEXTURE_2D, texture)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.BindImageTexture(0, texture, 0, false, 0, gl.WRITE_ONLY, gl.RGBA8)
 
-		gl.BindImageTexture(0, texture, 0, false, 0, gl.WRITE_ONLY, gl.RGBA8)
-	}
+	return texture
+}
 
+func initFramebuffer(texture uint32) uint32 {
 	var framebuffer uint32
-	{
-			gl.GenFramebuffers(1, &framebuffer)
-			gl.BindFramebuffer(gl.FRAMEBUFFER, framebuffer)
-			gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)
+	gl.GenFramebuffers(1, &framebuffer)
+	gl.BindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)
 
-			gl.BindFramebuffer(gl.READ_FRAMEBUFFER, framebuffer)
-			gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
-	}
-	
-	var w, h = window.GetSize()
-	var img = image.NewRGBA(image.Rect(0, 0, w, h))
+	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, framebuffer)
+	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
+
+	return framebuffer
+}
+
+
+func Draw() []uint8 {
+
+	w := WINDOW_WIDTH
+	h := WINDOW_HEIGHT
+
+	var img = image.NewRGBA(image.Rect(0, 0, w/2, h/2))
 	var red = color.RGBA{255, 0, 0, 0}
-
+	var blue = color.RGBA{0, 0, 255, 0}
 	for i := 0; i < h/2; i++ {
-		for j := 0; j < w; j++ {
-			img.Set(j, i, red)
+		for j := 0; j < w/2; j++ {
+
+			if (j % 2 > 0) {
+				img.Set(j, i, red)
+
+			} else {
+				img.Set(j, i, blue)
+
+			}
 		}
 	}
 
+	return img.Pix
+}
+
+func main() {
+	window := initGlfw()
+	defer glfw.Terminate() // Terminate when we're done.
+
+	initOpengl()
+
+	texture := initTexture()
+	initFramebuffer(texture)
+
+	var w, h = window.GetSize()
+
 	for !window.ShouldClose() {
 
+		imgData := Draw()
 
 		gl.BindTexture(gl.TEXTURE_2D, texture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, int32(w), int32(h), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
+		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, int32(w/2), int32(h/2), 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(imgData))
+		gl.BlitFramebuffer(0, 0, int32(w/2), int32(h/2), 0, 0, int32(w/2), int32(h/2), gl.COLOR_BUFFER_BIT, gl.LINEAR)
 
-		gl.BlitFramebuffer(0, 0, int32(w), int32(h), 0, 0, int32(w), int32(h), gl.COLOR_BUFFER_BIT, gl.LINEAR)
-		// time := glfw.GetTime()
-		// printTime(time)
-		
 		glfw.PollEvents()
 		window.SwapBuffers()
 	}
