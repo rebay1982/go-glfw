@@ -81,7 +81,6 @@ func initFramebuffer(texture uint32) uint32 {
 	return framebuffer
 }
 
-
 func Draw() []uint8 {
 
 	w := WINDOW_WIDTH
