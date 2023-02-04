@@ -30,10 +30,14 @@ const (
 )
 
 var (
-	triangle = []float32 {
-		0.0, 1.0, 0.0,
+	square = []float32 {
+		-1.0, 1.0, 0.0,
 		-1.0, -1.0, 0.0,
 		1.0, -1.0, 0.0,
+
+		-1.0, 1.0, 0.0,
+		1.0, -1.0, 0.0,
+		1.0, 1.0, 0.0,
 	}
 )
 
@@ -147,13 +151,13 @@ func main() {
 	// Init OpenGL: Done ////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-	vao := makeVao(triangle)
+	vao := makeVao(square)
 	for !window.ShouldClose() {
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 		gl.UseProgram(program)
 
 		gl.BindVertexArray(vao)
-		gl.DrawArrays(gl.TRIANGLES, 0, int32(len(triangle)/3))
+		gl.DrawArrays(gl.TRIANGLES, 0, int32(len(square)/3))
 		// time := glfw.GetTime()
 		// printTime(time)
 		glfw.PollEvents()
